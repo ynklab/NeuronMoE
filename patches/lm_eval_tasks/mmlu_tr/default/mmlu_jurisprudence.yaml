@@ -1,0 +1,7 @@
+"dataset_name": "jurisprudence"
+"description": "Aşağıdakiler hukuk felsefesiyle ilgili çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_tr"
+"task": "mmlu_jurisprudence_tr"
+"task_alias": "jurisprudence_tr"

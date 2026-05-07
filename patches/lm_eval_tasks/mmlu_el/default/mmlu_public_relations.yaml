@@ -1,0 +1,7 @@
+"dataset_name": "public_relations"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τις δημόσιες σχέσεις.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_el"
+"task": "mmlu_public_relations_el"
+"task_alias": "public_relations_el"

@@ -1,0 +1,7 @@
+"dataset_name": "high_school_biology"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τη βιολογία του γυμνασίου.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_high_school_biology_el"
+"task_alias": "high_school_biology_el"

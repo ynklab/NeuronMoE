@@ -1,0 +1,7 @@
+"dataset_name": "high_school_chemistry"
+"description": "Aşağıdakiler lise kimyası hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_tr"
+"task": "mmlu_high_school_chemistry_tr"
+"task_alias": "high_school_chemistry_tr"

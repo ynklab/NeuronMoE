@@ -1,0 +1,7 @@
+"dataset_name": "computer_security"
+"description": "Aşağıdakiler bilgisayar güvenliği hakkında çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_tr"
+"task": "mmlu_computer_security_tr"
+"task_alias": "computer_security_tr"

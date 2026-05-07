@@ -1,0 +1,7 @@
+"dataset_name": "public_relations"
+"description": "Aşağıdakiler halkla ilişkiler hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_tr"
+"task": "mmlu_public_relations_tr"
+"task_alias": "public_relations_tr"

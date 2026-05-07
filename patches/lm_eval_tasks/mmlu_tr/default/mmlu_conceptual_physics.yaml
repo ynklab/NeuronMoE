@@ -1,0 +1,7 @@
+"dataset_name": "conceptual_physics"
+"description": "Aşağıdakiler kavramsal fizik hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_tr"
+"task": "mmlu_conceptual_physics_tr"
+"task_alias": "conceptual_physics_tr"

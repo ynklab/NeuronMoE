@@ -1,0 +1,577 @@
+--- a/train/pt/workflow.py	2026-04-26 19:16:18.410977725 +0900
++++ b/train/pt/workflow.py	2026-04-19 14:48:56.532983170 +0900
+@@ -5,6 +5,7 @@
+ 
+ from transformers import DataCollatorForLanguageModeling, Trainer
+ 
++from ...train.pt.trainer import CustomTrainer
+ from ...data import get_dataset, split_dataset
+ from ...extras.ploting import plot_loss
+ from ...model import load_model_and_tokenizer
+@@ -26,10 +27,26 @@
+ ):
+     model, tokenizer = load_model_and_tokenizer(model_args, finetuning_args, training_args.do_train)
+     dataset = get_dataset(tokenizer, model_args, data_args, training_args, stage="pt")
++    dataset = dataset.shuffle(seed=22)
++    print(dataset)
+     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+ 
++    if training_args.local_rank <= 0:
++        print(model)
++
++    training_args.remove_unused_columns = False
+     # Initialize our Trainer
+-    trainer = Trainer(
++    # if "llama" in model_args.model_name_or_path.lower():
++    #     trainer = CustomTrainer4Llama(
++    #         model=model,
++    #         args=training_args,
++    #         tokenizer=tokenizer,
++    #         data_collator=data_collator,
++    #         callbacks=callbacks,
++    #         **split_dataset(dataset, data_args, training_args),
++    #     )
++    # else:
++    trainer = CustomTrainer(
+         model=model,
+         args=training_args,
+         tokenizer=tokenizer,
+@@ -42,6 +59,12 @@
+     if training_args.do_train:
+         train_result = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
+         trainer.save_model()
++        
++        #if model_args.optimize_embedding:
++        #    params = unwrap_model(trainer.model).state_dict()
++        #    to_save = {k:v for k, v in params.items() if k in ['model.embed_tokens.weight', 'lm_head.weight']}
++        #    torch.save(to_save, os.path.join(training_args.args.output_dir, "embedding.pt"))
++
+         trainer.log_metrics("train", train_result.metrics)
+         trainer.save_metrics("train", train_result.metrics)
+         trainer.save_state()
+--- a/data/loader.py	2026-04-26 19:16:18.407117094 +0900
++++ b/data/loader.py	2026-04-19 14:48:56.529051560 +0900
+@@ -25,6 +25,27 @@
+ logger = get_logger(__name__)
+ 
+ 
++def add_language_column(dataset, language):
++    dataset = dataset.map(
++        lambda x: {"language": language, **x},
++        batched=False,
++    )
++    return dataset
++
++# def add_language_tag_column(dataset, lang_tag):
++#     dataset = dataset.map(
++#         lambda x: {"lang_tag": lang_tag, **x},
++#         batched=False,
++#     )
++#     return dataset
++
++def add_language_group_tag(dataset, group_tag):
++    dataset = dataset.map(
++        lambda x: {"group_tag": group_tag, **x},
++        batched=False,
++    )
++    return dataset
++
+ def load_single_dataset(
+     dataset_attr: "DatasetAttr",
+     model_args: "ModelArguments",
+@@ -107,7 +128,19 @@
+         num_samples = min(data_args.max_samples, len(dataset))
+         dataset = dataset.select(range(num_samples))
+ 
+-    return align_dataset(dataset, dataset_attr, data_args)
++    dataset = align_dataset(dataset, dataset_attr, data_args)
++    
++    if data_args.generate_lang_mask and dataset_attr.language is not None:
++        dataset = add_language_column(dataset, dataset_attr.language)
++
++    # if data_args.language_tag_experts and dataset_attr.lang_tag is not None:
++    #     dataset = add_language_tag_column(dataset, dataset_attr.lang_tag)
++    
++    if data_args.sequential_add_mask and dataset_attr.group_tag is not None:
++        dataset = add_language_group_tag(dataset, dataset_attr.group_tag)
++
++    print(dataset)
++    return dataset
+ 
+ 
+ def merge_dataset(
+--- a/hparams/finetuning_args.py	2026-04-26 19:16:18.410977725 +0900
++++ b/hparams/finetuning_args.py	2026-04-19 14:48:56.525119950 +0900
+@@ -59,8 +59,110 @@
+     create_new_adapter: Optional[bool] = field(
+         default=False, metadata={"help": "Whether or not to create a new adapter with randomly initialized weight."}
+     )
++    loramoe: Optional[bool] = field(
++        default=False, metadata={"help": "Whether or not to create a new adapter with randomly initialized weight."}
++    )
++
+ 
++@dataclass
++class MoeArguments:
++    r"""
++    Arguments pertaining to the LoRA training.  作者自己加的
++    """
++    moe_every_k_layers: Optional[int] = field(
++        default=1,
++        metadata={"help": "Upcycling to MoE layer every k layer."}
++    )
++    layers_to_moe: Optional[str] = field(
++        default=None,
++        metadata={"help": "Upcycling to MoE layer for which layers."}
++    )
++    moe_num_experts: Optional[int] = field(
++        default=2,
++        metadata={"help": "The total number of experts for moe fine-tuning. If set to N, then N-1 new experts are added."}
++    )
++    ada_moe_num_experts_list: Optional[str] = field(
++        default=None,
++        metadata={"help": "The added experts_num for each layer."}
++    )
++    old_moe_num_experts_list: Optional[str] = field(
++        default=None,
++        metadata={"help": "The old experts_num for each layer."}
++    )
++    group_nums: Optional[str] = field(
++        default=None,
++        metadata={"help": "The old experts_num for each layer."}
++    )
++    save_all_params: Optional[bool] = field(
++        default=False,
++        metadata={"help": "Updates and save all the parameters of MoE."}
++    )
++    train_only_router: Optional[bool] = field(
++        default=False,
++        metadata={"help": "Whether to mark only the router trainable."}
++    )
++    topk: Optional[int] = field(
++        default=1,
++        metadata={"help": "How much experts are selected for each token."}
++    )
++    aux_loss_coef: Optional[float] = field(
++        default=None,
++        metadata={"help": "The weight of the load balancing loss. Only will be used if set."}
++    )
++    # dif_lbl_weights_list: Optional[str] = field(
++    #     default=None,
++    #     metadata={"help": "Different layers have different weights of load balance."}
++    # )
++    lpr_loss_coef: Optional[float] = field(
++        default=None,
++        metadata={"help": "The weight of the lpr loss. Only will be used if set."}
++    )
++    classify_loss_coef: Optional[float] = field(
++        default=None,
++        metadata={"help": "The weight of the token-classify loss. Only will be used if set."}
++    )
++    # lan_tag_loss_coef: Optional[float] = field(
++    #     default=None,
++    #     metadata={"help": "The weight of the language-specific experts loss. Only will be used if set."}
++    # )
++    # share_lbl_loss_coef: Optional[float] = field(
++    #     default=None,
++    #     metadata={"help": "The weight of the shared-0 load balancing loss. Only will be used if set."}
++    # )
++    # spe_agn_hard_route: Optional[bool] = field(
++    #     default=False,
++    #     metadata={
++    #         "help": (
++    #             "hard_route last expert as the agnostic expert"
++    #         ),
++    #     },
++    # )
++    # spe_ori_agn_hard_route: Optional[bool] = field(
++    #     default=False,
++    #     metadata={
++    #         "help": (
++    #             "hard_route the original expert as the agnostic expert"
++    #         ),
++    #     },
++    # )
++    # token_route: Optional[bool] = field(
++    #     default=False,
++    #     metadata={
++    #         "help": (
++    #             "route experts according to tokens."
++    #         ),
++    #     },
++    # )
++    sequential_add_loss_coef: Optional[float] = field(
++        default=None,
++        metadata={
++            "help": (
++                "The loss for the sequential adding experts setting."
++            ),
++        },
++    )
+ 
++    
+ @dataclass
+ class RLHFArguments:
+     r"""
+@@ -117,14 +219,14 @@
+ 
+ 
+ @dataclass
+-class FinetuningArguments(FreezeArguments, LoraArguments, RLHFArguments):
++class FinetuningArguments(FreezeArguments, LoraArguments, MoeArguments, RLHFArguments):
+     r"""
+     Arguments pertaining to which techniques we are going to fine-tuning with.
+     """
+     stage: Optional[Literal["pt", "sft", "rm", "ppo", "dpo"]] = field(
+         default="sft", metadata={"help": "Which stage will be performed in training."}
+     )
+-    finetuning_type: Optional[Literal["lora", "freeze", "full"]] = field(
++    finetuning_type: Optional[Literal["lora", "freeze", "full", "moe"]] = field(
+         default="lora", metadata={"help": "Which fine-tuning method to use."}
+     )
+     plot_loss: Optional[bool] = field(
+@@ -142,7 +244,7 @@
+         self.lora_target = split_arg(self.lora_target)
+         self.additional_target = split_arg(self.additional_target)
+ 
+-        assert self.finetuning_type in ["lora", "freeze", "full"], "Invalid fine-tuning method."
++        assert self.finetuning_type in ["lora", "freeze", "full", "moe", "ffn", "moea", "ca"], "Invalid fine-tuning method."
+         assert self.ref_model_quantization_bit in [None, 8, 4], "We only accept 4-bit or 8-bit quantization."
+         assert self.reward_model_quantization_bit in [None, 8, 4], "We only accept 4-bit or 8-bit quantization."
+ 
+--- a/hparams/data_args.py	2026-04-26 19:16:18.410977725 +0900
++++ b/hparams/data_args.py	2026-04-19 14:48:56.525119950 +0900
+@@ -10,6 +10,15 @@
+     template: Optional[str] = field(
+         default=None, metadata={"help": "Which template to use for constructing prompts in training and inference."}
+     )
++    src_lang: Optional[str] = field(
++        default=None, metadata={"help": "Which template to use for constructing prompts in training and inference."}
++    )
++    tgt_lang: Optional[str] = field(
++        default=None, metadata={"help": "Which template to use for constructing prompts in training and inference."}
++    )
++    task: Optional[str] = field(
++        default=None, metadata={"help": "Which template to use for constructing prompts in training and inference."}
++    )
+     dataset: Optional[str] = field(
+         default=None,
+         metadata={"help": "The name of provided dataset(s) to use. Use commas to separate multiple datasets."},
+@@ -50,6 +59,9 @@
+     max_samples: Optional[int] = field(
+         default=None, metadata={"help": "For debugging purposes, truncate the number of examples for each dataset."}
+     )
++    en_max_samples: Optional[int] = field(
++        default=None, metadata={"help": "For debugging purposes, truncate the number of examples for each dataset."}
++    )
+     eval_num_beams: Optional[int] = field(
+         default=None,
+         metadata={"help": "Number of beams to use for evaluation. This argument will be passed to `model.generate`"},
+@@ -70,6 +82,32 @@
+         default=None, metadata={"help": "Path to save or load the preprocessed datasets."}
+     )
+ 
++    generate_lang_mask: Optional[bool] = field(
++        default=False, metadata={"help": "Whether use language mask in MoE-LPR's stage training."}
++    )
++
++    sequential_add_mask: Optional[bool] = field(
++        default=False, metadata={"help": "Whether use mask in sequential adding setting."}
++    )
++    different_old_experts: Optional[bool] = field(
++        default=False, metadata={"help": "Whether use mask in sequential adding setting and different layer has different expert numbers."}
++    )
++
++    # language_tag_experts: Optional[bool] = field(
++    #     default=False, metadata={"help": "Whether use language-specific-experts in stage-1 training."}
++    # )
++    per_language_experts_num: Optional[int] = field(
++        default=1, metadata={"help": "how many experts for each expanded language? need to align with the moe_num_experts"}
++    )
++
++    # specific_ori_agnostic: Optional[bool] = field(
++    #     default=False, metadata={"help": "Whether use language-specific-experts and language-agnostic-experts (0) in stage-1 training. i.e., add 4 experts"}
++    # )
++    # specific_agnostic: Optional[bool] = field(
++    #     default=False, metadata={"help": "Whether use language-specific-experts and language-agnostic-experts in stage-1 training. i.e., add 4 experts"}
++    # )
++
++
+     def __post_init__(self):
+         if self.reserved_label_len >= self.cutoff_len:
+             raise ValueError("`reserved_label_len` must be smaller than `cutoff_len`.")
+--- a/model/adapter.py	2026-04-26 19:16:18.410977725 +0900
++++ b/model/adapter.py	2026-04-19 14:48:56.529051560 +0900
+@@ -2,7 +2,7 @@
+ from typing import TYPE_CHECKING
+ 
+ import torch
+-from peft import LoraConfig, PeftModel, TaskType, get_peft_model
++from peft import LoraConfig, PeftModel, TaskType, get_peft_model, MoeConfig, PeftConfig
+ from transformers.integrations import is_deepspeed_zero3_enabled
+ 
+ from ..extras.logging import get_logger
+@@ -24,10 +24,108 @@
+     r"""
+     Initializes the adapters.
+ 
+-    Support full-parameter, freeze and LoRA training.
++    Support moe-lpr, full-parameter, freeze and LoRA training.
+ 
+     Note that the trainable parameters must be cast to float32.
+     """
++    if finetuning_args.finetuning_type == "moe":
++        logger.info("Fine-tuning method: MoE")
++        if model_args.adapter_name_or_path is not None:
++            logger.info("Resume training from moe adapter: {}.".format(model_args.adapter_name_or_path[0]))
++            moe_config = PeftConfig.from_pretrained(model_args.adapter_name_or_path[0])
++            moe_config.lpr_loss_coef=finetuning_args.lpr_loss_coef
++            moe_config.classify_loss_coef=finetuning_args.classify_loss_coef
++            moe_config.aux_loss_coef=finetuning_args.aux_loss_coef
++            moe_config.sequential_add_loss_coef=finetuning_args.sequential_add_loss_coef
++            # moe_config.lan_tag_loss_coef=finetuning_args.lan_tag_loss_coef
++            # moe_config.share_lbl_loss_coef=finetuning_args.share_lbl_loss_coef
++            # moe_config.dif_lbl_weights_list=finetuning_args.dif_lbl_weights_list  # 影响stage2的训练，stage2可以不传这个参数
++            if finetuning_args.group_nums is not None:
++                if "," in finetuning_args.group_nums:
++                    moe_config.group_nums = [int(i) for i in finetuning_args.group_nums.split(",")]
++                else:
++                    moe_config.group_nums=int(finetuning_args.group_nums)
++            # print("&&&&-moe_config.num_experts", moe_config.num_experts)
++            # print("finetuning_args.ada_moe_num_experts_list", finetuning_args.ada_moe_num_experts_list)
++            if finetuning_args.ada_moe_num_experts_list is not None:
++                finetuning_args.ada_moe_num_experts_list = [int(i) for i in finetuning_args.ada_moe_num_experts_list.split(",")]
++                moe_config.num_experts = finetuning_args.ada_moe_num_experts_list
++            if finetuning_args.old_moe_num_experts_list is not None:
++                finetuning_args.old_moe_num_experts_list = [int(i) for i in finetuning_args.old_moe_num_experts_list.split(",")]
++                moe_config.old_num_experts = finetuning_args.old_moe_num_experts_list
++            print("$$$-moe_config", moe_config)
++            model = PeftModel.from_pretrained(model, 
++                                              model_id=model_args.adapter_name_or_path[0], 
++                                              config=moe_config, 
++                                              is_trainable=True
++                                              )
++            # logger.info("@@@-init_adapter_from_pretrained: {}".format(model))
++            
++        else:
++            checkpoint_to_resume = None
++            if is_trainable and checkpoint_to_resume is None: # create new moe weights while training
++                if finetuning_args.ada_moe_num_experts_list == None:
++                    distance = finetuning_args.moe_every_k_layers  # 每k层加一个moe层
++                    print("@@@-1-distance", distance)
++                    if distance is not None:
++                        layers = list(range(distance - 1, len(model.model.layers), distance))
++                    else:
++                        layers = [int(k) for k in finetuning_args.layers_to_moe.split(",")]  # 直接设置layers_to_moe确定哪些层变成moe层
++                    print("@@@-2-moe-layers", layers)
++                    moe_config = MoeConfig(
++                        task_type=TaskType.CAUSAL_LM,
++                        inference_mode=False,
++                        topk=finetuning_args.topk,
++                        num_experts=finetuning_args.moe_num_experts,
++                        layers_to_transform=layers,
++                        save_all_params=finetuning_args.save_all_params,
++                        aux_loss_coef=finetuning_args.aux_loss_coef,
++                        lpr_loss_coef=finetuning_args.lpr_loss_coef,
++                        sequential_add_loss_coef=finetuning_args.sequential_add_loss_coef,
++                    )
++                    print("@@@-lf-llmtuner-model-adapter-model-line63", model)
++                    model = get_peft_model(model, moe_config)
++                    print("@@@-lf-llmtuner-model-adapter-model-line65", model)
++                else:
++                    finetuning_args.ada_moe_num_experts_list = [int(i) for i in finetuning_args.ada_moe_num_experts_list.split(",")]
++                    layers = list(range(0, len(model.model.layers)))
++                    assert len(finetuning_args.ada_moe_num_experts_list) == len(layers)
++                    print("@@@-lf-model-adapter: line68: len(layers), finetuning_args.ada_moe_num_experts_list: ", len(layers), finetuning_args.ada_moe_num_experts_list)
++                    moe_config = MoeConfig(
++                        task_type=TaskType.CAUSAL_LM,
++                        inference_mode=False,
++                        topk=finetuning_args.topk,
++                        num_experts=finetuning_args.ada_moe_num_experts_list,
++                        layers_to_transform=layers,
++                        save_all_params=finetuning_args.save_all_params,
++                        aux_loss_coef=finetuning_args.aux_loss_coef,
++                        lpr_loss_coef=finetuning_args.lpr_loss_coef,
++                        sequential_add_loss_coef=finetuning_args.sequential_add_loss_coef,
++                    )
++                    model = get_peft_model(model, moe_config)
++                    print("@@@-lf-llmtuner-model-adapter-model-line83", model)
++
++
++        logger.info(moe_config)     
++        for n, p in model.named_parameters():
++                logger.info(f"{n}: {p.requires_grad}")       
++        # mark all parameters trainable for naive moe.
++        if finetuning_args.save_all_params:
++            logger.info("Moe training and saving all params.")
++            for n, p in model.named_parameters():
++                p.requires_grad = True
++
++        if finetuning_args.train_only_router:
++            logger.info("Mark only the moe router (and classify model) trainable.")
++            for n, p in model.named_parameters():
++                if "router" in n or "classify" in n:
++                    p.requires_grad = True
++                else:
++                    p.requires_grad = False
++
++        for n, p in model.named_parameters():
++                logger.info(f"{n}: {p.requires_grad}") 
++
+ 
+     if (not is_trainable) and model_args.adapter_name_or_path is None:
+         logger.info("Adapter is not found at evaluation, load the base model.")
+@@ -64,70 +162,96 @@
+                 param.data = param.data.to(torch.float32)
+ 
+     if finetuning_args.finetuning_type == "lora":
+-        logger.info("Fine-tuning method: LoRA")
+-        adapter_to_resume = None
++        if finetuning_args.loramoe:
++            logger.info("Init new peft model") 
++            target_modules = finetuning_args.lora_target # lora paras
++            lora_rank = finetuning_args.lora_rank
++            lora_dropout = finetuning_args.lora_dropout
++            lora_alpha = finetuning_args.lora_alpha
++            lora_nums = 8
++            blc_alpha = 0.1
++            blc_weight = 0.1
++            logger.info(f"lora_rank: {lora_rank}")
++            logger.info(f"lora_nums: {lora_nums}")
++            logger.info(f"blc_alpha: {blc_alpha}")
++            logger.info(f"blc_weight: {blc_weight}")
++            peft_config = LoraMoeConfig(
++                task_type=LoraMoeTaskType.CAUSAL_LM,
++                target_modules=target_modules,
++                inference_mode=False,
++                r=lora_rank, 
++                lora_alpha=lora_alpha,
++                lora_dropout=lora_dropout,
++                lora_nums=lora_nums,
++                blc_alpha=blc_alpha,
++                blc_weight=blc_weight,
++                )
++            model = get_peft_model_loramoe(model, peft_config)
++        else:
++            logger.info("Fine-tuning method: LoRA")
++            adapter_to_resume = None
++
++            if model_args.adapter_name_or_path is not None:
++                is_mergeable = True
++                if getattr(model, "quantization_method", None):  # merge lora in quantized model is unstable
++                    assert len(model_args.adapter_name_or_path) == 1, "Quantized model only accepts a single adapter."
++                    is_mergeable = False
++
++                if is_deepspeed_zero3_enabled():
++                    assert len(model_args.adapter_name_or_path) == 1, "Cannot use multiple adapters in DeepSpeed ZeRO-3."
++                    is_mergeable = False
++
++                if (is_trainable and not finetuning_args.create_new_adapter) or (not is_mergeable):
++                    adapter_to_merge = model_args.adapter_name_or_path[:-1]
++                    adapter_to_resume = model_args.adapter_name_or_path[-1]
++                else:
++                    adapter_to_merge = model_args.adapter_name_or_path
+ 
+-        if model_args.adapter_name_or_path is not None:
+-            is_mergeable = True
+-            if getattr(model, "quantization_method", None):  # merge lora in quantized model is unstable
+-                assert len(model_args.adapter_name_or_path) == 1, "Quantized model only accepts a single adapter."
+-                is_mergeable = False
+-
+-            if is_deepspeed_zero3_enabled():
+-                assert len(model_args.adapter_name_or_path) == 1, "Cannot use multiple adapters in DeepSpeed ZeRO-3."
+-                is_mergeable = False
+-
+-            if (is_trainable and not finetuning_args.create_new_adapter) or (not is_mergeable):
+-                adapter_to_merge = model_args.adapter_name_or_path[:-1]
+-                adapter_to_resume = model_args.adapter_name_or_path[-1]
+-            else:
+-                adapter_to_merge = model_args.adapter_name_or_path
++                for adapter in adapter_to_merge:
++                    model = PeftModel.from_pretrained(model, adapter)
++                    model = model.merge_and_unload()
+ 
+-            for adapter in adapter_to_merge:
+-                model = PeftModel.from_pretrained(model, adapter)
+-                model = model.merge_and_unload()
++                if len(adapter_to_merge) > 0:
++                    logger.info("Merged {} adapter(s).".format(len(adapter_to_merge)))
+ 
+-            if len(adapter_to_merge) > 0:
+-                logger.info("Merged {} adapter(s).".format(len(adapter_to_merge)))
++                if adapter_to_resume is not None:  # resume lora training
++                    model = PeftModel.from_pretrained(model, adapter_to_resume, is_trainable=is_trainable)
+ 
+-            if adapter_to_resume is not None:  # resume lora training
+-                model = PeftModel.from_pretrained(model, adapter_to_resume, is_trainable=is_trainable)
++            if is_trainable and adapter_to_resume is None:  # create new lora weights while training
++                if len(finetuning_args.lora_target) == 1 and finetuning_args.lora_target[0] == "all":
++                    target_modules = find_all_linear_modules(model)
++                else:
++                    target_modules = finetuning_args.lora_target
+ 
+-        if is_trainable and adapter_to_resume is None:  # create new lora weights while training
+-            if len(finetuning_args.lora_target) == 1 and finetuning_args.lora_target[0] == "all":
+-                target_modules = find_all_linear_modules(model)
+-            else:
+-                target_modules = finetuning_args.lora_target
++                peft_kwargs = {
++                    "r": finetuning_args.lora_rank,
++                    "target_modules": target_modules,
++                    "lora_alpha": finetuning_args.lora_alpha,
++                    "lora_dropout": finetuning_args.lora_dropout,
++                }
++
++                if model_args.use_unsloth:
++                    from unsloth import FastLlamaModel, FastMistralModel  # type: ignore
++
++                    unsloth_peft_kwargs = {"model": model, "max_seq_length": model_args.model_max_length}
++                    if "loftq_config" in inspect.signature(FastLlamaModel.get_peft_model).parameters:
++                        unsloth_peft_kwargs["loftq_config"] = {}
++
++                    if getattr(model.config, "model_type", None) == "llama":
++                        model = FastLlamaModel.get_peft_model(**peft_kwargs, **unsloth_peft_kwargs)
++                    elif getattr(model.config, "model_type", None) == "mistral":
++                        model = FastMistralModel.get_peft_model(**peft_kwargs, **unsloth_peft_kwargs)
++                    else:
++                        raise NotImplementedError
+ 
+-            peft_kwargs = {
+-                "r": finetuning_args.lora_rank,
+-                "target_modules": target_modules,
+-                "lora_alpha": finetuning_args.lora_alpha,
+-                "lora_dropout": finetuning_args.lora_dropout,
+-            }
+-
+-            if model_args.use_unsloth:
+-                from unsloth import FastLlamaModel, FastMistralModel  # type: ignore
+-
+-                unsloth_peft_kwargs = {"model": model, "max_seq_length": model_args.model_max_length}
+-                if "loftq_config" in inspect.signature(FastLlamaModel.get_peft_model).parameters:
+-                    unsloth_peft_kwargs["loftq_config"] = {}
+-
+-                if getattr(model.config, "model_type", None) == "llama":
+-                    model = FastLlamaModel.get_peft_model(**peft_kwargs, **unsloth_peft_kwargs)
+-                elif getattr(model.config, "model_type", None) == "mistral":
+-                    model = FastMistralModel.get_peft_model(**peft_kwargs, **unsloth_peft_kwargs)
+                 else:
+-                    raise NotImplementedError
+-
+-            else:
+-                lora_config = LoraConfig(
+-                    task_type=TaskType.CAUSAL_LM,
+-                    inference_mode=False,
+-                    modules_to_save=finetuning_args.additional_target,
+-                    **peft_kwargs,
+-                )
+-                model = get_peft_model(model, lora_config)
++                    lora_config = LoraConfig(
++                        task_type=TaskType.CAUSAL_LM,
++                        inference_mode=False,
++                        modules_to_save=finetuning_args.additional_target,
++                        **peft_kwargs,
++                    )
++                    model = get_peft_model(model, lora_config)
+ 
+         for param in filter(lambda p: p.requires_grad, model.parameters()):
+             param.data = param.data.to(torch.bfloat16 if finetuning_args.lora_bf16_mode else torch.float32)

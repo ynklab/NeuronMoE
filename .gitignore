@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Experiment outputs
+outputs*/
+logs*/
+wandb/
+*.log
+
+# Data (too large)
+*.tar.gz
+*.zip
+*.parquet
+*.jsonl
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test caches
+.pytest_cache/
+
+# HuggingFace cache
+.cache/
+
+# Internal docs
+.codex
+CLAUDE.md
+CURRENT_IMPLEMENTATION.md

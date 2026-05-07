@@ -1,0 +1,7 @@
+"dataset_name": "business_ethics"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την επιχειρηματική ηθική.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_el"
+"task": "mmlu_business_ethics_el"
+"task_alias": "business_ethics_el"

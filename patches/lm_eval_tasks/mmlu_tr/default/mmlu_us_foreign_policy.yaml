@@ -1,0 +1,7 @@
+"dataset_name": "us_foreign_policy"
+"description": "Aşağıdakiler dış politika hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_tr"
+"task": "mmlu_us_foreign_policy_tr"
+"task_alias": "us_foreign_policy_tr"

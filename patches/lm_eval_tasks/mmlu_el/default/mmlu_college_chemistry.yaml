@@ -1,0 +1,7 @@
+"dataset_name": "college_chemistry"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τη χημεία του κολεγίου.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_college_chemistry_el"
+"task_alias": "college_chemistry_el"

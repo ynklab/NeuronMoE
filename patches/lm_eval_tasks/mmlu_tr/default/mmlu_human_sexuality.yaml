@@ -1,0 +1,7 @@
+"dataset_name": "human_sexuality"
+"description": "Aşağıdakiler insan cinselliğiyle ilgili çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_tr"
+"task": "mmlu_human_sexuality_tr"
+"task_alias": "human_sexuality_tr"

@@ -1,0 +1,7 @@
+"dataset_name": "elementary_mathematics"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τα μαθηματικά της δημοτικής.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_elementary_mathematics_el"
+"task_alias": "elementary_mathematics_el"

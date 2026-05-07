@@ -1,0 +1,7 @@
+"dataset_name": "elementary_mathematics"
+"description": "Aşağıdakiler ilköğretim matematiği hakkında çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_tr"
+"task": "mmlu_elementary_mathematics_tr"
+"task_alias": "elementary_mathematics_tr"

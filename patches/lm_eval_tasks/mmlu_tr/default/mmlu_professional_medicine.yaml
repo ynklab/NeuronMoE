@@ -1,0 +1,7 @@
+"dataset_name": "professional_medicine"
+"description": "Aşağıdakiler profesyonel tıp hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_tr"
+"task": "mmlu_professional_medicine_tr"
+"task_alias": "professional_medicine_tr"

@@ -1,0 +1,7 @@
+"dataset_name": "global_facts"
+"description": "Aşağıdakiler küresel gerçekler hakkında çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_tr"
+"task": "mmlu_global_facts_tr"
+"task_alias": "global_facts_tr"

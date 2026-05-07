@@ -1,0 +1,7 @@
+"dataset_name": "medical_genetics"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την ιατρική γενετική.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_el"
+"task": "mmlu_medical_genetics_el"
+"task_alias": "medical_genetics_el"

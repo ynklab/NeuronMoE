@@ -1,0 +1,7 @@
+"dataset_name": "moral_scenarios"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ ηθικά σενάρια.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_el"
+"task": "mmlu_moral_scenarios_el"
+"task_alias": "moral_scenarios_el"

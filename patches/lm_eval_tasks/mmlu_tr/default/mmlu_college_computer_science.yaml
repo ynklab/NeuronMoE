@@ -1,0 +1,7 @@
+"dataset_name": "college_computer_science"
+"description": "Aşağıdakiler üniversite bilgisayar bilimi hakkında çoktan seçmeli\
+  \ sorulardır (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_tr"
+"task": "mmlu_college_computer_science_tr"
+"task_alias": "college_computer_science_tr"

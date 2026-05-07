@@ -1,0 +1,7 @@
+"dataset_name": "anatomy"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την ανατομία.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_anatomy_el"
+"task_alias": "anatomy_el"

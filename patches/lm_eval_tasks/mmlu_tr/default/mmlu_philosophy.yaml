@@ -1,0 +1,7 @@
+"dataset_name": "philosophy"
+"description": "Aşağıdakiler felsefe hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_tr"
+"task": "mmlu_philosophy_tr"
+"task_alias": "philosophy_tr"

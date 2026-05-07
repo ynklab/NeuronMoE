@@ -1,0 +1,7 @@
+"dataset_name": "astronomy"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την αστρονομία.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_astronomy_el"
+"task_alias": "astronomy_el"

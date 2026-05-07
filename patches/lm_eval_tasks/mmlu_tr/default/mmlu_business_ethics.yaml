@@ -1,0 +1,7 @@
+"dataset_name": "business_ethics"
+"description": "Aşağıdakiler iş etiği hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_tr"
+"task": "mmlu_business_ethics_tr"
+"task_alias": "business_ethics_tr"

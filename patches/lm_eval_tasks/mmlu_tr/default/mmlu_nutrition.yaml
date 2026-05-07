@@ -1,0 +1,7 @@
+"dataset_name": "nutrition"
+"description": "Aşağıdakiler beslenmeyle ilgili çoktan seçmeli sorulardır (cevaplarla).\
+  \ \n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_tr"
+"task": "mmlu_nutrition_tr"
+"task_alias": "nutrition_tr"

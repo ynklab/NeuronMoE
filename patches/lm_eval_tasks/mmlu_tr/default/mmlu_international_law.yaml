@@ -1,0 +1,7 @@
+"dataset_name": "international_law"
+"description": "Aşağıdakiler uluslararası hukukla ilgili çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_tr"
+"task": "mmlu_international_law_tr"
+"task_alias": "international_law_tr"

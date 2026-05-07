@@ -1,0 +1,7 @@
+"dataset_name": "abstract_algebra"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την αφηρημένη άλγεβρα.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_abstract_algebra_el"
+"task_alias": "abstract_algebra_el"

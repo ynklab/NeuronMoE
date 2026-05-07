@@ -1,0 +1,7 @@
+"dataset_name": "college_mathematics"
+"description": "Aşağıdakiler üniversite matematiği hakkında çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_tr"
+"task": "mmlu_college_mathematics_tr"
+"task_alias": "college_mathematics_tr"

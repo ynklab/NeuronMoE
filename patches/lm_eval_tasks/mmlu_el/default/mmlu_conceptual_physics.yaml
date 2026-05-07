@@ -1,0 +1,7 @@
+"dataset_name": "conceptual_physics"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την εννοιολογική φυσική.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_conceptual_physics_el"
+"task_alias": "conceptual_physics_el"

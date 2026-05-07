@@ -1,0 +1,7 @@
+"dataset_name": "sociology"
+"description": "Aşağıdakiler sosyoloji hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_tr"
+"task": "mmlu_sociology_tr"
+"task_alias": "sociology_tr"

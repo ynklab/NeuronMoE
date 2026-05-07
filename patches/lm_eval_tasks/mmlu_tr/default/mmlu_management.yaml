@@ -1,0 +1,7 @@
+"dataset_name": "management"
+"description": "Aşağıdakiler yönetimle ilgili çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_tr"
+"task": "mmlu_management_tr"
+"task_alias": "management_tr"

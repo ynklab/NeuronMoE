@@ -1,0 +1,7 @@
+"dataset_name": "moral_disputes"
+"description": "Aşağıdakiler ahlaki anlaşmazlıklarla ilgili çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_tr"
+"task": "mmlu_moral_disputes_tr"
+"task_alias": "moral_disputes_tr"

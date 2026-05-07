@@ -1,0 +1,12 @@
+#  add by zx
+group: mmlu_el
+task:
+  - mmlu_stem_el
+  - mmlu_other_el
+  - mmlu_social_sciences_el
+  - mmlu_humanities_el
+aggregate_metric_list:
+  - metric: acc
+    weight_by_size: True
+metadata:
+  version: 2

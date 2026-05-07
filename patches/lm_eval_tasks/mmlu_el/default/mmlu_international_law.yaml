@@ -1,0 +1,7 @@
+"dataset_name": "international_law"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ το διεθνές δίκαιο.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_el"
+"task": "mmlu_international_law_el"
+"task_alias": "international_law_el"

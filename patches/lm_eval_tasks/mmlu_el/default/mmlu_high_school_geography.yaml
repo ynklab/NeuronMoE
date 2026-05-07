@@ -1,0 +1,7 @@
+"dataset_name": "high_school_geography"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τη γεωγραφία του γυμνασίου.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_el"
+"task": "mmlu_high_school_geography_el"
+"task_alias": "high_school_geography_el"

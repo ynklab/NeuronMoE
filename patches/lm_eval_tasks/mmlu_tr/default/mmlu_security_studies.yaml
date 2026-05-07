@@ -1,0 +1,7 @@
+"dataset_name": "security_studies"
+"description": "Aşağıdakiler güvenlik çalışmaları hakkında çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_tr"
+"task": "mmlu_security_studies_tr"
+"task_alias": "security_studies_tr"

@@ -1,0 +1,7 @@
+"dataset_name": "professional_accounting"
+"description": "Aşağıdakiler profesyonel muhasebe hakkında çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_tr"
+"task": "mmlu_professional_accounting_tr"
+"task_alias": "professional_accounting_tr"

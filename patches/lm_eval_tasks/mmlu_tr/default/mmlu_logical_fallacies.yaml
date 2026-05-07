@@ -1,0 +1,7 @@
+"dataset_name": "logical_fallacies"
+"description": "Aşağıdakiler mantıksal yanılgılarla ilgili çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_tr"
+"task": "mmlu_logical_fallacies_tr"
+"task_alias": "logical_fallacies_tr"

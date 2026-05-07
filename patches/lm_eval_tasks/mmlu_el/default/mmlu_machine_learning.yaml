@@ -1,0 +1,7 @@
+"dataset_name": "machine_learning"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τη μηχανική εκμάθηση.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_machine_learning_el"
+"task_alias": "machine_learning_el"

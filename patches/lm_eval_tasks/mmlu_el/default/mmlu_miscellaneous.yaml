@@ -1,0 +1,7 @@
+"dataset_name": "miscellaneous"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ διάφορα.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_el"
+"task": "mmlu_miscellaneous_el"
+"task_alias": "miscellaneous_el"

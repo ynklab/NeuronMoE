@@ -1,0 +1,7 @@
+"dataset_name": "professional_law"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ το επαγγελματικό δίκαιο.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_el"
+"task": "mmlu_professional_law_el"
+"task_alias": "professional_law_el"

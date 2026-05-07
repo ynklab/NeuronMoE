@@ -1,0 +1,7 @@
+"dataset_name": "high_school_microeconomics"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τη μικροοικονομία του γυμνασίου.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_el"
+"task": "mmlu_high_school_microeconomics_el"
+"task_alias": "high_school_microeconomics_el"

@@ -1,0 +1,7 @@
+"dataset_name": "philosophy"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τη φιλοσοφία.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_el"
+"task": "mmlu_philosophy_el"
+"task_alias": "philosophy_el"

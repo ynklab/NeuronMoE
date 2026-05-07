@@ -1,0 +1,7 @@
+"dataset_name": "professional_psychology"
+"description": "Aşağıdakiler profesyonel psikoloji hakkında çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_tr"
+"task": "mmlu_professional_psychology_tr"
+"task_alias": "professional_psychology_tr"

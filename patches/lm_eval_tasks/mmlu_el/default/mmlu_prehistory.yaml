@@ -1,0 +1,7 @@
+"dataset_name": "prehistory"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την προϊστορία.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_el"
+"task": "mmlu_prehistory_el"
+"task_alias": "prehistory_el"

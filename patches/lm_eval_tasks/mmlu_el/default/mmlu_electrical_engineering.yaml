@@ -1,0 +1,7 @@
+"dataset_name": "electrical_engineering"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την ηλεκτρική μηχανική.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_electrical_engineering_el"
+"task_alias": "electrical_engineering_el"

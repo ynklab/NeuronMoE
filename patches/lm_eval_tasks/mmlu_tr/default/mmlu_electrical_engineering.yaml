@@ -1,0 +1,7 @@
+"dataset_name": "electrical_engineering"
+"description": "Aşağıdakiler elektrik mühendisliği hakkında çoktan seçmeli sorulardır\
+  \ (cevaplarla). \n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_tr"
+"task": "mmlu_electrical_engineering_tr"
+"task_alias": "electrical_engineering_tr"

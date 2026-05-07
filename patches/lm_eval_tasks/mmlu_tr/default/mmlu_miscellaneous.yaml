@@ -1,0 +1,7 @@
+"dataset_name": "miscellaneous"
+"description": "Aşağıdakiler çeşitli konularla ilgili çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_tr"
+"task": "mmlu_miscellaneous_tr"
+"task_alias": "miscellaneous_tr"

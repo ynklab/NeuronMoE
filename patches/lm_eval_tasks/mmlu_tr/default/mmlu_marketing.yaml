@@ -1,0 +1,7 @@
+"dataset_name": "marketing"
+"description": "Aşağıdakiler pazarlamayla ilgili çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_tr"
+"task": "mmlu_marketing_tr"
+"task_alias": "marketing_tr"

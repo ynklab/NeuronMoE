@@ -1,0 +1,7 @@
+"dataset_name": "computer_security"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την ασφάλεια του υπολογιστή.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_computer_security_el"
+"task_alias": "computer_security_el"

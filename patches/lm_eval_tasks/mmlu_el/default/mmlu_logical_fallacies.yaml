@@ -1,0 +1,7 @@
+"dataset_name": "logical_fallacies"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ λογικές πλάνες.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_el"
+"task": "mmlu_logical_fallacies_el"
+"task_alias": "logical_fallacies_el"

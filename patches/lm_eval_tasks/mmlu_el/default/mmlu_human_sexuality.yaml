@@ -1,0 +1,7 @@
+"dataset_name": "human_sexuality"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την ανθρώπινη σεξουαλικότητα.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_el"
+"task": "mmlu_human_sexuality_el"
+"task_alias": "human_sexuality_el"

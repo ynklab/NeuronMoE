@@ -1,0 +1,7 @@
+"dataset_name": "moral_disputes"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ ηθικές διαφορές.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_el"
+"task": "mmlu_moral_disputes_el"
+"task_alias": "moral_disputes_el"

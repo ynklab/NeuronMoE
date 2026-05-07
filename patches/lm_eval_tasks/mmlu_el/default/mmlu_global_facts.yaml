@@ -1,0 +1,7 @@
+"dataset_name": "global_facts"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ παγκόσμια γεγονότα.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_other_tasks_el"
+"task": "mmlu_global_facts_el"
+"task_alias": "global_facts_el"

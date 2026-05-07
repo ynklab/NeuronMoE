@@ -1,0 +1,7 @@
+"dataset_name": "world_religions"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τις παγκόσμιες θρησκείες.\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_el"
+"task": "mmlu_world_religions_el"
+"task_alias": "world_religions_el"

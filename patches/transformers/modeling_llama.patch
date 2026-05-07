@@ -1,0 +1,458 @@
+--- a/models/llama/modeling_llama.py
++++ b/models/llama/modeling_llama.py
+@@ -19,7 +19,7 @@
+ # limitations under the License.
+ import math
+ from typing import List, Optional, Tuple, Union
+-
++from dataclasses import dataclass
+ import torch
+ import torch.nn.functional as F
+ import torch.utils.checkpoint
+@@ -37,6 +37,7 @@
+     QuestionAnsweringModelOutput,
+     SequenceClassifierOutputWithPast,
+     TokenClassifierOutput,
++    ModelOutput
+ )
+ from ...modeling_rope_utils import ROPE_INIT_FUNCTIONS
+ from ...modeling_utils import PreTrainedModel
+@@ -697,6 +698,9 @@
+         use_cache: Optional[bool] = False,
+         cache_position: Optional[torch.LongTensor] = None,
+         position_embeddings: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,  # will become mandatory in v4.46
++        langs=None,
++        lang_tags=None,
++        input_ids=None,
+         **kwargs,
+     ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+         """
+@@ -743,6 +747,15 @@
+         residual = hidden_states
+         hidden_states = self.post_attention_layernorm(hidden_states)
+         hidden_states = self.mlp(hidden_states)
++        router_logits = None
++        classify_res = None
++        if isinstance(hidden_states, tuple):
++            if len(hidden_states) == 4:
++                # MoE with routing info: (result, router_logits, classify_res, routing_info)
++                hidden_states, router_logits, classify_res, routing_info = hidden_states
++            elif len(hidden_states) == 3:
++                # MoE without routing info: (result, router_logits, classify_res)
++                hidden_states, router_logits, classify_res = hidden_states
+         hidden_states = residual + hidden_states
+ 
+         outputs = (hidden_states,)
+@@ -752,7 +765,9 @@
+ 
+         if use_cache:
+             outputs += (present_key_value,)
+-
++            
++        if router_logits is not None:
++            return outputs, router_logits, classify_res, -1
+         return outputs
+ 
+ 
+@@ -923,6 +938,8 @@
+         output_hidden_states: Optional[bool] = None,
+         return_dict: Optional[bool] = None,
+         cache_position: Optional[torch.LongTensor] = None,
++        langs=None,
++        lang_tags=None,
+     ) -> Union[Tuple, BaseModelOutputWithPast]:
+         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+         output_hidden_states = (
+@@ -978,6 +995,8 @@
+         # decoder layers
+         all_hidden_states = () if output_hidden_states else None
+         all_self_attns = () if output_attentions else None
++        all_router_logits = ()
++        all_classify_logits = ()
+         next_decoder_cache = None
+ 
+         for decoder_layer in self.layers:
+@@ -995,6 +1014,9 @@
+                     use_cache,
+                     cache_position,
+                     position_embeddings,
++                    langs,
++                    lang_tags,
++                    input_ids,
+                 )
+             else:
+                 layer_outputs = decoder_layer(
+@@ -1006,8 +1028,16 @@
+                     use_cache=use_cache,
+                     cache_position=cache_position,
+                     position_embeddings=position_embeddings,
++                    langs=langs,
++                    lang_tags=lang_tags,
++                    input_ids=input_ids,
+                 )
+ 
++            if isinstance(layer_outputs[-1], int) and layer_outputs[-1] == -1:
++                layer_outputs, router_logits, classify_res, _ = layer_outputs
++                all_router_logits += (router_logits,)
++                all_classify_logits += (classify_res,)
++            
+             hidden_states = layer_outputs[0]
+ 
+             if use_cache:
+@@ -1028,6 +1058,15 @@
+ 
+         if not return_dict:
+             return tuple(v for v in [hidden_states, next_cache, all_hidden_states, all_self_attns] if v is not None)
++
++        if len(all_router_logits) > 0:
++            return BaseModelOutputWithPast(
++                last_hidden_state=hidden_states,
++                past_key_values=next_cache,
++                hidden_states=all_hidden_states,
++                attentions=all_self_attns,
++            ), all_router_logits, all_classify_logits
++        
+         return BaseModelOutputWithPast(
+             last_hidden_state=hidden_states,
+             past_key_values=next_cache,
+@@ -1102,6 +1141,167 @@
+         return causal_mask
+ 
+ 
++
++def lpr_loss_func(router_weights, lang_mask):
++    loss_func = CrossEntropyLoss()
++    
++    router_logits_layers_dict = {}
++    for ilayer_router_logits in router_weights:
++        cur_experts_num = ilayer_router_logits.shape[-1]
++        if cur_experts_num not in router_logits_layers_dict:
++            router_logits_layers_dict[cur_experts_num] = (ilayer_router_logits,)
++        else:
++            router_logits_layers_dict[cur_experts_num] += (ilayer_router_logits,)
++
++    all_loss = []
++    for i_key in router_logits_layers_dict.keys():
++        cur_router_logits = torch.stack(router_logits_layers_dict[i_key])
++        cur_router_probs = torch.nn.functional.softmax(cur_router_logits, dim=-1)  
++
++        cur_mask = lang_mask.reshape(-1).bool().expand(cur_router_probs.size()[:2])
++
++        cur_probs = cur_router_probs[cur_mask].to(torch.float).contiguous() # n x e
++        cur_target = torch.zeros_like(cur_probs, dtype=torch.long)[:, 0].contiguous()
++        cur_loss = loss_func(cur_probs, cur_target)
++        all_loss.append(cur_loss.unsqueeze(0))
++    
++    all_loss = torch.cat(all_loss, dim=0)
++    loss = torch.mean(all_loss)
++
++    return loss
++
++def classify_loss_func(classify_res, attention_mask, group_tags):
++    
++    bsz, seq_len = attention_mask.shape 
++    final_classify_res = ()
++    for _i in classify_res:
++        if _i is not None:
++            final_classify_res += (_i,)
++    all_classify_res = torch.stack(final_classify_res) # [layers_num, bsz, group_num]
++    group_tags = group_tags.squeeze(-1)[:, :1].unsqueeze(0).expand(len(final_classify_res), bsz, 1)  # [layers_num, bsz, 1]
++    all_classify_res_log_probs = torch.nn.functional.log_softmax(all_classify_res, dim=-1)
++    tmp_ = torch.gather(all_classify_res_log_probs, dim=-1, index=group_tags)
++    classify_loss = -torch.mean(torch.sum(tmp_, dim=-1))
++
++    
++
++    return classify_loss
++
++def load_balancing_loss_func(
++    gate_logits: torch.Tensor, num_experts: torch.Tensor = None, top_k=2, attention_mask: Optional[torch.Tensor] = None
++) -> float:
++    r"""
++    Computes auxiliary load balancing loss as in Switch Transformer - implemented in Pytorch.
++
++    See Switch Transformer (https://arxiv.org/abs/2101.03961) for more details. This function implements the loss
++    function presented in equations (4) - (6) of the paper. It aims at penalizing cases where the routing between
++    experts is too unbalanced.
++
++    Args:
++        gate_logits (Union[`torch.Tensor`, Tuple[torch.Tensor]):
++            Logits from the `gate`, should be a tuple of model.config.num_hidden_layers tensors of
++            shape [batch_size X sequence_length, num_experts].
++        attention_mask (`torch.Tensor`, None):
++            The attention_mask used in forward function
++            shape [batch_size X sequence_length] if not None.
++        num_experts (`int`, *optional*):
++            Number of experts
++
++    Returns:
++        The auxiliary loss.
++    """
++    if gate_logits is None or not isinstance(gate_logits, tuple):
++        return 0
++
++    if isinstance(gate_logits, tuple):
++        compute_device = gate_logits[0].device
++        concatenated_gate_logits = torch.cat([layer_gate.to(compute_device) for layer_gate in gate_logits], dim=0)
++
++    routing_weights = torch.nn.functional.softmax(concatenated_gate_logits, dim=-1, dtype=torch.float)
++
++    _, selected_experts = torch.topk(routing_weights, top_k, dim=-1)
++
++    expert_mask = torch.nn.functional.one_hot(selected_experts, num_experts)
++
++    if attention_mask is None:
++        # Compute the percentage of tokens routed to each experts
++        tokens_per_expert = torch.mean(expert_mask.float(), dim=0)
++
++        # Compute the average probability of routing to these experts
++        router_prob_per_expert = torch.mean(routing_weights, dim=0)
++    else:
++        batch_size, sequence_length = attention_mask.shape
++        num_hidden_layers = concatenated_gate_logits.shape[0] // (batch_size * sequence_length)
++
++        # Compute the mask that masks all padding tokens as 0 with the same shape of expert_mask
++        expert_attention_mask = (
++            attention_mask[None, :, :, None, None]
++            .expand((num_hidden_layers, batch_size, sequence_length, top_k, num_experts))
++            .reshape(-1, top_k, num_experts)
++            .to(compute_device)
++        )
++
++        # Compute the percentage of tokens routed to each experts
++        tokens_per_expert = torch.sum(expert_mask.float() * expert_attention_mask, dim=0) / torch.sum(
++            expert_attention_mask, dim=0
++        )
++
++        # Compute the mask that masks all padding tokens as 0 with the same shape of tokens_per_expert
++        router_per_expert_attention_mask = (
++            attention_mask[None, :, :, None]
++            .expand((num_hidden_layers, batch_size, sequence_length, num_experts))
++            .reshape(-1, num_experts)
++            .to(compute_device)
++        )
++
++        # Compute the average probability of routing to these experts
++        router_prob_per_expert = torch.sum(routing_weights * router_per_expert_attention_mask, dim=0) / torch.sum(
++            router_per_expert_attention_mask, dim=0
++        )
++
++    overall_loss = torch.sum(tokens_per_expert * router_prob_per_expert.unsqueeze(0))
++    return overall_loss * num_experts
++
++def sequential_adding_loss_func(
++    gate_logits: torch.Tensor, num_experts: torch.Tensor = None, top_k=2, attention_mask: Optional[torch.Tensor] = None, 
++    group_tag_labels: Optional[torch.Tensor] = None,
++) -> float:
++    
++    log_probs = torch.nn.functional.log_softmax(gate_logits, dim=-1)
++
++    attention_mask = attention_mask.view(log_probs.shape[0])
++    group_tag_labels = group_tag_labels.view(log_probs.shape[0], -1)
++
++    log_probs = log_probs[attention_mask]
++    group_tag_labels = group_tag_labels[attention_mask]
++
++    tmp_probs = torch.gather(log_probs, dim=-1, index=group_tag_labels.clamp(min=0))
++    # print("@@@-1", group_tag_labels[0], log_probs[0], tmp_probs[0])
++
++    tmp_probs[group_tag_labels.eq(-100)] = 0
++    # print("@@@-2", group_tag_labels[0], log_probs[0], tmp_probs[0])
++    sequential_adding_loss = -torch.mean(torch.sum(tmp_probs, dim=-1))
++    # print("@@@-sequential_adding_loss-line1275", sequential_adding_loss)
++
++    return sequential_adding_loss
++
++
++@dataclass
++class MultiAuxMoeCausalLMOutputWithPast(ModelOutput):
++    loss: Optional[torch.FloatTensor] = None
++    logits: torch.FloatTensor = None
++    past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None
++    hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
++    attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
++    router_logits: Optional[Tuple[torch.FloatTensor]] = None
++    balance_loss: Optional[torch.FloatTensor] = None
++    share_balance_loss: Optional[torch.FloatTensor] = None
++    lpr_loss: Optional[torch.FloatTensor] = None
++    lang_tag_loss: Optional[torch.FloatTensor] = None
++    sequential_add_loss: Optional[torch.FloatTensor] = None
++    classify_loss: Optional[torch.FloatTensor] = None
++
++
+ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
+     _tied_weights_keys = ["lm_head.weight"]
+ 
+@@ -1148,6 +1348,9 @@
+         return_dict: Optional[bool] = None,
+         cache_position: Optional[torch.LongTensor] = None,
+         num_logits_to_keep: int = 0,
++        langs=None,
++        lang_tags=None,
++        group_tags=None,
+     ) -> Union[Tuple, CausalLMOutputWithPast]:
+         r"""
+         Args:
+@@ -1197,8 +1400,15 @@
+             output_hidden_states=output_hidden_states,
+             return_dict=return_dict,
+             cache_position=cache_position,
++            langs=langs,
++            lang_tags=lang_tags,
+         )
+ 
++        router_logits = None
++        classify_res = None
++        if isinstance(outputs, tuple):
++            outputs, router_logits, classify_res = outputs
++
+         hidden_states = outputs[0]
+         if self.config.pretraining_tp > 1:
+             lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
+@@ -1227,17 +1437,145 @@
+             # Enable model parallelism
+             shift_labels = shift_labels.to(shift_logits.device)
+             loss = loss_fct(shift_logits, shift_labels)
++        
++        balance_loss = None
++        share_balance_loss = None
++        lpr_loss = None
++        sequential_add_loss = None
++        lang_tag_loss = None
++        classify_loss = None
++        if router_logits is not None and self.training:
++            # Find first MoE layer for accessing shared configuration
++            first_moe_layer = None
++            for layer in self.model.layers:
++                if hasattr(layer.mlp, 'aux_loss_coef') and layer.mlp.aux_loss_coef is not None:
++                    first_moe_layer = layer.mlp
++                    break
++
++            if first_moe_layer is not None:
++
++                balance_loss = []
++                num_experts_list = []
++                topk_list = []
++                dif_lbl_weights_list = []
++                for i_layer in self.model.layers:   # 兼容部分层不加专家的情况
++                    try:
++                        num_experts_list.append(i_layer.mlp.num_experts["default"])
++                        topk_list.append(i_layer.mlp.topk)
++                    except:
++                        pass
++                # if first_moe_layer.dif_lbl_weights_list is not None:
++                #     dif_lbl_weights_list = [float(i) for i in first_moe_layer.dif_lbl_weights_list.split(",")]
++                #     assert len(dif_lbl_weights_list) == len(num_experts_list)
++                assert len(router_logits) == len(num_experts_list) == len(topk_list)
++                for layers_id, layer_router_logits in enumerate(router_logits):
++                    if topk_list[layers_id] > num_experts_list[layers_id]:
++                        # 兼容adaptive_k setting
++                        balance_loss.append(load_balancing_loss_func(
++                                    (layer_router_logits,),
++                                    num_experts_list[layers_id],
++                                    num_experts_list[layers_id],
++                                    attention_mask,
++                                )) 
++                    else:
++                        if dif_lbl_weights_list != []:
++                            balance_loss.append(dif_lbl_weights_list[layers_id] * load_balancing_loss_func(
++                                        (layer_router_logits,),
++                                        num_experts_list[layers_id],
++                                        topk_list[layers_id],
++                                        attention_mask,
++                                    )) 
++                        else:
++                            balance_loss.append(load_balancing_loss_func(
++                                        (layer_router_logits,),
++                                        num_experts_list[layers_id],
++                                        topk_list[layers_id],
++                                        attention_mask,
++                                    )) 
++                balance_loss = torch.stack(balance_loss)
++                balance_loss = torch.mean(balance_loss)
++                if labels is not None:
++                    loss += first_moe_layer.aux_loss_coef * balance_loss.to(loss.device)
++
++
++            if first_moe_layer is not None and first_moe_layer.lpr_loss_coef is not None:
++                # for stage-2
++                lpr_loss = lpr_loss_func(
++                    router_logits,
++                    lang_mask=langs,
++                )
++                if labels is not None:
++                    loss += first_moe_layer.lpr_loss_coef * lpr_loss.to(loss.device)
++
++            if first_moe_layer is not None and first_moe_layer.sequential_add_loss_coef is not None:
++                # for the stage2 in sequential adding setting  (only support the base setting, i.e. each layer has the same number of experts.)
++                sequential_add_loss = []
++                num_experts_list = []
++                old_num_experts_list = []
++                topk_list = []
++                for i_layer in self.model.layers:   # 兼容部分层不加专家的情况
++                    try:
++                        num_experts_list.append(i_layer.mlp.num_experts["default"])
++                        if i_layer.mlp.old_num_experts["default"] is not None:
++                            old_num_experts_list.append(i_layer.mlp.old_num_experts["default"])
++                        topk_list.append(i_layer.mlp.topk)
++                    except:
++                        pass
++                assert len(router_logits) == len(num_experts_list) == len(topk_list)
++                for layers_id, layer_router_logits in enumerate(router_logits):
++                    if old_num_experts_list == []:
++                        sequential_add_loss.append(sequential_adding_loss_func(
++                                    layer_router_logits,
++                                    num_experts_list[layers_id],
++                                    topk_list[layers_id],
++                                    attention_mask,
++                                    group_tags,
++                                )) 
++                
++                if sequential_add_loss != []:
++                    sequential_add_loss = torch.stack(sequential_add_loss)
++                    sequential_add_loss = torch.mean(sequential_add_loss)
++                if labels is not None:
++                    if sequential_add_loss != []:
++                        loss += first_moe_layer.sequential_add_loss_coef * sequential_add_loss.to(loss.device)
++
++            
++            if first_moe_layer is not None and first_moe_layer.classify_loss_coef is not None:
++                assert classify_res != ()
++                classify_loss = classify_loss_func(
++                    classify_res,
++                    attention_mask,
++                    group_tags,
++                )
++                if labels is not None:
++                    loss += first_moe_layer.classify_loss_coef * classify_loss.to(loss.device)
++                
+ 
+         if not return_dict:
+             output = (logits,) + outputs[1:]
+             return (loss,) + output if loss is not None else output
+ 
+-        return CausalLMOutputWithPast(
++        # return CausalLMOutputWithPast(
++        #     loss=loss,
++        #     logits=logits,
++        #     past_key_values=outputs.past_key_values,
++        #     hidden_states=outputs.hidden_states,
++        #     attentions=outputs.attentions,
++        # )
++
++        return MultiAuxMoeCausalLMOutputWithPast(
+             loss=loss,
++            balance_loss=balance_loss,
++            lpr_loss=lpr_loss,
++            classify_loss=classify_loss,
++            sequential_add_loss=sequential_add_loss,
++            lang_tag_loss=lang_tag_loss,
++            share_balance_loss=share_balance_loss,
+             logits=logits,
+             past_key_values=outputs.past_key_values,
+             hidden_states=outputs.hidden_states,
+             attentions=outputs.attentions,
++            router_logits=router_logits,
+         )
+ 
+     def prepare_inputs_for_generation(

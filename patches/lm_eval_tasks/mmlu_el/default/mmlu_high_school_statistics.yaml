@@ -1,0 +1,7 @@
+"dataset_name": "high_school_statistics"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τα στατιστικά του γυμνασίου.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_high_school_statistics_el"
+"task_alias": "high_school_statistics_el"

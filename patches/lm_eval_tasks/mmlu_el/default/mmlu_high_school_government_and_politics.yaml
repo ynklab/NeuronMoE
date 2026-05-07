@@ -1,0 +1,7 @@
+"dataset_name": "high_school_government_and_politics"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τη διοίκηση και την πολιτική στο γυμνάσιο.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_el"
+"task": "mmlu_high_school_government_and_politics_el"
+"task_alias": "high_school_government_and_politics_el"

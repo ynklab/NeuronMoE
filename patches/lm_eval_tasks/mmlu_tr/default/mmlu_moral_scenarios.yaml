@@ -1,0 +1,7 @@
+"dataset_name": "moral_scenarios"
+"description": "Aşağıdakiler ahlaki senaryolarla ilgili çoktan seçmeli sorulardır\
+  \ (cevaplarla).\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_humanities_tasks_tr"
+"task": "mmlu_moral_scenarios_tr"
+"task_alias": "moral_scenarios_tr"

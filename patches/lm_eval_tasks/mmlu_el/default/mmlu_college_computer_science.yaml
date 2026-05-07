@@ -1,0 +1,7 @@
+"dataset_name": "college_computer_science"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ την επιστήμη των υπολογιστών στο κολέγιο.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_el"
+"task": "mmlu_college_computer_science_el"
+"task_alias": "college_computer_science_el"

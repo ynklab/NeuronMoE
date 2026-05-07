@@ -1,0 +1,7 @@
+"dataset_name": "astronomy"
+"description": "Aşağıdakiler astronomi hakkında çoktan seçmeli sorulardır (cevaplarla).\n\
+  \n"
+"include": "_default_template_yaml"
+"tag": "mmlu_stem_tasks_tr"
+"task": "mmlu_astronomy_tr"
+"task_alias": "astronomy_tr"

@@ -1,0 +1,7 @@
+"dataset_name": "security_studies"
+"description": "Ακολουθούν ερωτήσεις πολλαπλής επιλογής (με απαντήσεις) σχετικά με\
+  \ τις μελέτες ασφάλειας.\n\n"
+"include": "_default_template_yaml"
+"tag": "mmlu_social_sciences_tasks_el"
+"task": "mmlu_security_studies_el"
+"task_alias": "security_studies_el"
